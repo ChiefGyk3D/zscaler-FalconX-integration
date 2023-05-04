@@ -7,22 +7,30 @@ import configparser
 import requests
 import time
 import json
+import boto3
 from util.util import log_http_error
 from falconpy import APIHarness
 
+# Replace this with the actual AWS Secrets Manager secret ARN
+cs_secret_name = 'your-crowdstrike-secret-arn'
+zs_secret_name = 'your-zscaler-secret-arn'
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-cs_config = config['CROWDSTRIKE']
-cs_client = str(cs_config['client'])
-cs_secret = str(cs_config['secret'])
-cs_base_url = str(cs_config['base_url'])
-zs_config = config['ZSCALER']
-zs_hostname = str(zs_config['hostname'])
-zs_username = str(zs_config['username'])
-zs_password = str(zs_config['password'])
-zs_api_key = str(zs_config['token'])
+session = boto3.session.Session()
+secrets_manager = session.client(service_name='secretsmanager')
 
+cs_secret_response = secrets_manager.get_secret_value(SecretId=cs_secret_name)
+zs_secret_response = secrets_manager.get_secret_value(SecretId=zs_secret_name)
+
+cs_secret_json = json.loads(cs_secret_response['SecretString'])
+zs_secret_json = json.loads(zs_secret_response['SecretString'])
+
+cs_client = str(cs_secret_json['client'])
+cs_secret = str(cs_secret_json['secret'])
+cs_base_url = str(cs_secret_json['base_url'])
+zs_hostname = str(zs_secret_json['hostname'])
+zs_username = str(zs_secret_json['username'])
+zs_password = str(zs_secret_json['password'])
+zs_api_key = str(zs_secret_json['token'])
 
 def cs_auth():
     """Returns a new Falcon API Auth Token, hot off the press
